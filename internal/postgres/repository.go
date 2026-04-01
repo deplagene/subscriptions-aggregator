@@ -2,47 +2,53 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/deplagene/subaggregator/internal/postgres/sqlc"
 	"github.com/deplagene/subaggregator/internal/subscriptions"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
-var _ subscriptions.Repository = (*Repository)(nil)
+var _ subscriptions.ISubscriptionRepository = (*subscriptionRepository)(nil)
 
-// Repository - PostgreSQL-реализация subscriptions.Repository.
-type Repository struct {
+// subscriptionRepository - PostgreSQL-реализация subscriptions.subscriptionRepository.
+type subscriptionRepository struct {
 	q sqlc.Querier
 }
 
-func NewRepository(db sqlc.DBTX) *Repository {
-	return &Repository{q: sqlc.New(db)}
+func NewRepository(db sqlc.DBTX) *subscriptionRepository {
+	return &subscriptionRepository{q: sqlc.New(db)}
 }
 
-func (r *Repository) Create(ctx context.Context, sub subscriptions.Subscription) (subscriptions.Subscription, error) {
+func (r *subscriptionRepository) Create(ctx context.Context, sub subscriptions.Subscription) (uuid.UUID, error) {
 	const op = "internal.postgres.Repository.Create"
 
-	row, err := r.q.CreateSubscription(ctx, toCreateSubscriptionParams(sub))
+	id, err := r.q.CreateSubscription(ctx, toCreateSubscriptionParams(sub))
 	if err != nil {
-		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
+		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return mapSubscription(row), nil
+	return id, nil
 }
 
-func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (subscriptions.Subscription, error) {
+func (r *subscriptionRepository) GetByID(ctx context.Context, id uuid.UUID) (*subscriptions.Subscription, error) {
 	const op = "internal.postgres.Repository.GetByID"
 
 	row, err := r.q.GetSubscriptionByID(ctx, id)
 	if err != nil {
-		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%s: %w", op, subscriptions.ErrSubscriptionNotFound)
+		}
+
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return mapSubscription(row), nil
 }
 
-func (r *Repository) List(ctx context.Context, filter subscriptions.ListFilter) ([]subscriptions.Subscription, error) {
+func (r *subscriptionRepository) List(ctx context.Context, filter subscriptions.ListFilter) ([]subscriptions.Subscription, error) {
 	const op = "internal.postgres.Repository.List"
 
 	rows, err := r.q.ListSubscriptions(ctx, toListSubscriptionsParams(filter))
@@ -53,18 +59,22 @@ func (r *Repository) List(ctx context.Context, filter subscriptions.ListFilter) 
 	return mapSubscriptions(rows), nil
 }
 
-func (r *Repository) Update(ctx context.Context, sub subscriptions.Subscription) (subscriptions.Subscription, error) {
+func (r *subscriptionRepository) Update(ctx context.Context, sub subscriptions.Subscription) error {
 	const op = "internal.postgres.Repository.Update"
 
-	row, err := r.q.UpdateSubscription(ctx, toUpdateSubscriptionParams(sub))
+	rowsAffected, err := r.q.UpdateSubscription(ctx, toUpdateSubscriptionParams(sub))
 	if err != nil {
-		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	return mapSubscription(row), nil
+	if rowsAffected == 0 {
+		return fmt.Errorf("%s: %w", op, subscriptions.ErrSubscriptionNotFound)
+	}
+
+	return nil
 }
 
-func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *subscriptionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	const op = "internal.postgres.Repository.Delete"
 
 	rowsAffected, err := r.q.DeleteSubscription(ctx, id)
@@ -73,13 +83,13 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("%s: no rows affected", op)
+		return fmt.Errorf("%s: %w", op, subscriptions.ErrSubscriptionNotFound)
 	}
 
 	return nil
 }
 
-func (r *Repository) CalculateTotal(ctx context.Context, filter subscriptions.TotalFilter) (int64, error) {
+func (r *subscriptionRepository) CalculateTotal(ctx context.Context, filter subscriptions.TotalFilter) (int64, error) {
 	const op = "internal.postgres.Repository.CalculateTotal"
 
 	total, err := r.q.CalculateSubscriptionsTotal(ctx, toCalculateTotalParams(filter))

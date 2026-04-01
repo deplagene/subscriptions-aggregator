@@ -55,19 +55,14 @@ func TestToCreateSubscriptionParams(t *testing.T) {
 
 	end := subscriptions.BillingDate{Month: time.April, Year: 2025}
 	sub := subscriptions.Subscription{
-		SubscriptionID: uuid.New(),
-		ServiceName:    "Yandex Plus",
-		Price:          400,
-		UserID:         uuid.New(),
-		StartedAt:      subscriptions.BillingDate{Month: time.March, Year: 2025},
-		EndedAt:        &end,
+		ServiceName: "Yandex Plus",
+		Price:       400,
+		UserID:      uuid.New(),
+		StartedAt:   subscriptions.BillingDate{Month: time.March, Year: 2025},
+		EndedAt:     &end,
 	}
 
 	got := toCreateSubscriptionParams(sub)
-
-	if got.ID != sub.SubscriptionID {
-		t.Errorf("toCreateSubscriptionParams(id) = %s, want %s", got.ID, sub.SubscriptionID)
-	}
 
 	if got.Price != int32(sub.Price) {
 		t.Errorf("toCreateSubscriptionParams(price) = %d, want %d", got.Price, sub.Price)

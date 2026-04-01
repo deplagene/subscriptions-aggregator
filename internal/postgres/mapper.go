@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func mapSubscription(row sqlc.Subscription) subscriptions.Subscription {
+func mapSubscription(row sqlc.Subscription) *subscriptions.Subscription {
 	subscription := subscriptions.Subscription{
 		SubscriptionID: row.ID,
 		ServiceName:    row.ServiceName,
@@ -24,13 +24,13 @@ func mapSubscription(row sqlc.Subscription) subscriptions.Subscription {
 		subscription.EndedAt = &endedAt
 	}
 
-	return subscription
+	return &subscription
 }
 
 func mapSubscriptions(rows []sqlc.Subscription) []subscriptions.Subscription {
 	items := make([]subscriptions.Subscription, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapSubscription(row))
+		items = append(items, *mapSubscription(row))
 	}
 
 	return items
@@ -38,7 +38,6 @@ func mapSubscriptions(rows []sqlc.Subscription) []subscriptions.Subscription {
 
 func toCreateSubscriptionParams(sub subscriptions.Subscription) sqlc.CreateSubscriptionParams {
 	return sqlc.CreateSubscriptionParams{
-		ID:          sub.SubscriptionID,
 		ServiceName: sub.ServiceName,
 		Price:       int32(sub.Price),
 		UserID:      sub.UserID,

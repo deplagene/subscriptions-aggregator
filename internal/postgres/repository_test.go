@@ -17,48 +17,32 @@ func TestRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
 	sub := subscriptions.Subscription{
-		SubscriptionID: uuid.New(),
-		ServiceName:    "Netflix",
-		Price:          400,
-		UserID:         uuid.New(),
-		StartedAt:      subscriptions.BillingDate{Month: time.March, Year: 2025},
-		EndedAt:        &subscriptions.BillingDate{Month: time.April, Year: 2025},
+		ServiceName: "Netflix",
+		Price:       400,
+		UserID:      uuid.New(),
+		StartedAt:   subscriptions.BillingDate{Month: time.March, Year: 2025},
+		EndedAt:     &subscriptions.BillingDate{Month: time.April, Year: 2025},
 	}
 
 	mock := &mockQuerier{
-		createSubscription: func(_ context.Context, arg sqlc.CreateSubscriptionParams) (sqlc.Subscription, error) {
-			if arg.ID != sub.SubscriptionID {
-				t.Fatalf("CreateSubscription(id) = %s, want %s", arg.ID, sub.SubscriptionID)
-			}
-
+		createSubscription: func(_ context.Context, arg sqlc.CreateSubscriptionParams) (uuid.UUID, error) {
 			if arg.Price != int32(sub.Price) {
 				t.Fatalf("CreateSubscription(price) = %d, want %d", arg.Price, sub.Price)
 			}
 
-			return sqlc.Subscription{
-				ID:          arg.ID,
-				ServiceName: arg.ServiceName,
-				Price:       arg.Price,
-				UserID:      arg.UserID,
-				StartedAt:   arg.StartedAt,
-				EndedAt:     arg.EndedAt,
-			}, nil
+			return uuid.New(), nil
 		},
 	}
 
-	repo := &Repository{q: mock}
+	repo := &subscriptionRepository{q: mock}
 
 	got, err := repo.Create(context.Background(), sub)
 	if err != nil {
 		t.Fatalf("Repository.Create() error = %v, want nil", err)
 	}
 
-	if got.SubscriptionID != sub.SubscriptionID {
-		t.Errorf("Repository.Create().SubscriptionID = %s, want %s", got.SubscriptionID, sub.SubscriptionID)
-	}
-
-	if got.Price != sub.Price {
-		t.Errorf("Repository.Create().Price = %d, want %d", got.Price, sub.Price)
+	if got == uuid.Nil {
+		t.Error("Repository.Create() = uuid.Nil, want generated id")
 	}
 }
 
@@ -100,7 +84,7 @@ func TestRepositoryList(t *testing.T) {
 		},
 	}
 
-	repo := &Repository{q: mock}
+	repo := &subscriptionRepository{q: mock}
 
 	items, err := repo.List(context.Background(), subscriptions.ListFilter{
 		Limit:       10,
@@ -129,7 +113,7 @@ func TestRepositoryDelete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		repo := &Repository{
+		repo := &subscriptionRepository{
 			q: &mockQuerier{
 				deleteSubscription: func(_ context.Context, gotID uuid.UUID) (int64, error) {
 					if gotID != id {
@@ -149,7 +133,7 @@ func TestRepositoryDelete(t *testing.T) {
 	t.Run("no rows", func(t *testing.T) {
 		t.Parallel()
 
-		repo := &Repository{
+		repo := &subscriptionRepository{
 			q: &mockQuerier{
 				deleteSubscription: func(_ context.Context, _ uuid.UUID) (int64, error) {
 					return 0, nil
@@ -160,6 +144,10 @@ func TestRepositoryDelete(t *testing.T) {
 		err := repo.Delete(context.Background(), id)
 		if err == nil {
 			t.Fatal("Repository.Delete() error = nil, want non-nil")
+		}
+
+		if !errors.Is(err, subscriptions.ErrSubscriptionNotFound) {
+			t.Fatalf("Repository.Delete() error = %v, want %v", err, subscriptions.ErrSubscriptionNotFound)
 		}
 	})
 }
@@ -186,7 +174,7 @@ func TestRepositoryCalculateTotal(t *testing.T) {
 		},
 	}
 
-	repo := &Repository{q: mock}
+	repo := &subscriptionRepository{q: mock}
 
 	total, err := repo.CalculateTotal(context.Background(), filter)
 	if err != nil {
@@ -202,7 +190,7 @@ func TestRepositoryWrapsErrors(t *testing.T) {
 	t.Parallel()
 
 	wantErr := errors.New("boom")
-	repo := &Repository{
+	repo := &subscriptionRepository{
 		q: &mockQuerier{
 			getSubscriptionByID: func(_ context.Context, _ uuid.UUID) (sqlc.Subscription, error) {
 				return sqlc.Subscription{}, wantErr
@@ -223,7 +211,7 @@ func TestRepositoryWrapsErrors(t *testing.T) {
 func TestRepositoryDeleteNoRowsHasOp(t *testing.T) {
 	t.Parallel()
 
-	repo := &Repository{
+	repo := &subscriptionRepository{
 		q: &mockQuerier{
 			deleteSubscription: func(_ context.Context, _ uuid.UUID) (int64, error) {
 				return 0, nil
@@ -239,15 +227,19 @@ func TestRepositoryDeleteNoRowsHasOp(t *testing.T) {
 	if !strings.Contains(err.Error(), "internal.postgres.Repository.Delete") {
 		t.Fatalf("Repository.Delete() error = %q, want operation prefix", err.Error())
 	}
+
+	if !errors.Is(err, subscriptions.ErrSubscriptionNotFound) {
+		t.Fatalf("Repository.Delete() error = %v, want %v", err, subscriptions.ErrSubscriptionNotFound)
+	}
 }
 
 type mockQuerier struct {
 	calculateSubscriptionsTotal func(context.Context, sqlc.CalculateSubscriptionsTotalParams) (int64, error)
-	createSubscription          func(context.Context, sqlc.CreateSubscriptionParams) (sqlc.Subscription, error)
+	createSubscription          func(context.Context, sqlc.CreateSubscriptionParams) (uuid.UUID, error)
 	deleteSubscription          func(context.Context, uuid.UUID) (int64, error)
 	getSubscriptionByID         func(context.Context, uuid.UUID) (sqlc.Subscription, error)
 	listSubscriptions           func(context.Context, sqlc.ListSubscriptionsParams) ([]sqlc.Subscription, error)
-	updateSubscription          func(context.Context, sqlc.UpdateSubscriptionParams) (sqlc.Subscription, error)
+	updateSubscription          func(context.Context, sqlc.UpdateSubscriptionParams) (int64, error)
 }
 
 func (m *mockQuerier) CalculateSubscriptionsTotal(ctx context.Context, arg sqlc.CalculateSubscriptionsTotalParams) (int64, error) {
@@ -258,9 +250,9 @@ func (m *mockQuerier) CalculateSubscriptionsTotal(ctx context.Context, arg sqlc.
 	return m.calculateSubscriptionsTotal(ctx, arg)
 }
 
-func (m *mockQuerier) CreateSubscription(ctx context.Context, arg sqlc.CreateSubscriptionParams) (sqlc.Subscription, error) {
+func (m *mockQuerier) CreateSubscription(ctx context.Context, arg sqlc.CreateSubscriptionParams) (uuid.UUID, error) {
 	if m.createSubscription == nil {
-		return sqlc.Subscription{}, nil
+		return uuid.Nil, nil
 	}
 
 	return m.createSubscription(ctx, arg)
@@ -290,9 +282,9 @@ func (m *mockQuerier) ListSubscriptions(ctx context.Context, arg sqlc.ListSubscr
 	return m.listSubscriptions(ctx, arg)
 }
 
-func (m *mockQuerier) UpdateSubscription(ctx context.Context, arg sqlc.UpdateSubscriptionParams) (sqlc.Subscription, error) {
+func (m *mockQuerier) UpdateSubscription(ctx context.Context, arg sqlc.UpdateSubscriptionParams) (int64, error) {
 	if m.updateSubscription == nil {
-		return sqlc.Subscription{}, nil
+		return 0, nil
 	}
 
 	return m.updateSubscription(ctx, arg)

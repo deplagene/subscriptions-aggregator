@@ -56,7 +56,6 @@ func (q *Queries) CalculateSubscriptionsTotal(ctx context.Context, arg Calculate
 
 const createSubscription = `-- name: CreateSubscription :one
 INSERT INTO subscriptions (
-    id,
     service_name,
     price,
     user_id,
@@ -67,14 +66,12 @@ INSERT INTO subscriptions (
     $2,
     $3,
     $4,
-    $5,
-    $6
+    $5
 )
-RETURNING id, service_name, price, user_id, started_at, ended_at, created_at, updated_at
+RETURNING id
 `
 
 type CreateSubscriptionParams struct {
-	ID          uuid.UUID   `db:"id"`
 	ServiceName string      `db:"service_name"`
 	Price       int32       `db:"price"`
 	UserID      uuid.UUID   `db:"user_id"`
@@ -82,27 +79,17 @@ type CreateSubscriptionParams struct {
 	EndedAt     pgtype.Date `db:"ended_at"`
 }
 
-func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (Subscription, error) {
+func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createSubscription,
-		arg.ID,
 		arg.ServiceName,
 		arg.Price,
 		arg.UserID,
 		arg.StartedAt,
 		arg.EndedAt,
 	)
-	var i Subscription
-	err := row.Scan(
-		&i.ID,
-		&i.ServiceName,
-		&i.Price,
-		&i.UserID,
-		&i.StartedAt,
-		&i.EndedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteSubscription = `-- name: DeleteSubscription :execrows
@@ -192,7 +179,7 @@ func (q *Queries) ListSubscriptions(ctx context.Context, arg ListSubscriptionsPa
 	return items, nil
 }
 
-const updateSubscription = `-- name: UpdateSubscription :one
+const updateSubscription = `-- name: UpdateSubscription :execrows
 UPDATE subscriptions
 SET
     service_name = $1,
@@ -202,7 +189,6 @@ SET
     ended_at = $5,
     updated_at = NOW()
 WHERE id = $6
-RETURNING id, service_name, price, user_id, started_at, ended_at, created_at, updated_at
 `
 
 type UpdateSubscriptionParams struct {
@@ -214,8 +200,8 @@ type UpdateSubscriptionParams struct {
 	ID          uuid.UUID   `db:"id"`
 }
 
-func (q *Queries) UpdateSubscription(ctx context.Context, arg UpdateSubscriptionParams) (Subscription, error) {
-	row := q.db.QueryRow(ctx, updateSubscription,
+func (q *Queries) UpdateSubscription(ctx context.Context, arg UpdateSubscriptionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateSubscription,
 		arg.ServiceName,
 		arg.Price,
 		arg.UserID,
@@ -223,16 +209,8 @@ func (q *Queries) UpdateSubscription(ctx context.Context, arg UpdateSubscription
 		arg.EndedAt,
 		arg.ID,
 	)
-	var i Subscription
-	err := row.Scan(
-		&i.ID,
-		&i.ServiceName,
-		&i.Price,
-		&i.UserID,
-		&i.StartedAt,
-		&i.EndedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

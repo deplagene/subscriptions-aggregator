@@ -1,20 +1,18 @@
 -- name: CreateSubscription :one
 INSERT INTO subscriptions (
-    id,
     service_name,
     price,
     user_id,
     started_at,
     ended_at
 ) VALUES (
-    sqlc.arg('id'),
     sqlc.arg('service_name'),
     sqlc.arg('price'),
     sqlc.arg('user_id'),
     sqlc.arg('started_at'),
     sqlc.narg('ended_at')
 )
-RETURNING id, service_name, price, user_id, started_at, ended_at, created_at, updated_at;
+RETURNING id;
 
 -- name: GetSubscriptionByID :one
 SELECT id, service_name, price, user_id, started_at, ended_at, created_at, updated_at
@@ -31,7 +29,7 @@ ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 
--- name: UpdateSubscription :one
+-- name: UpdateSubscription :execrows
 UPDATE subscriptions
 SET
     service_name = sqlc.arg('service_name'),
@@ -40,8 +38,7 @@ SET
     started_at = sqlc.arg('started_at'),
     ended_at = sqlc.narg('ended_at'),
     updated_at = NOW()
-WHERE id = sqlc.arg('id')
-RETURNING id, service_name, price, user_id, started_at, ended_at, created_at, updated_at;
+WHERE id = sqlc.arg('id');
 
 -- name: DeleteSubscription :execrows
 DELETE FROM subscriptions

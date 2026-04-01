@@ -12,11 +12,11 @@ import (
 
 type Querier interface {
 	CalculateSubscriptionsTotal(ctx context.Context, arg CalculateSubscriptionsTotalParams) (int64, error)
-	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (Subscription, error)
+	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (uuid.UUID, error)
 	DeleteSubscription(ctx context.Context, id uuid.UUID) (int64, error)
 	GetSubscriptionByID(ctx context.Context, id uuid.UUID) (Subscription, error)
 	ListSubscriptions(ctx context.Context, arg ListSubscriptionsParams) ([]Subscription, error)
-	UpdateSubscription(ctx context.Context, arg UpdateSubscriptionParams) (Subscription, error)
+	UpdateSubscription(ctx context.Context, arg UpdateSubscriptionParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)
