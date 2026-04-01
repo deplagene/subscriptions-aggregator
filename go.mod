@@ -3,3 +3,14 @@ module github.com/deplagene/subaggregator
 go 1.26.1
 
 require github.com/google/uuid v1.6.0
+
+require (
+	github.com/go-chi/chi/v5 v5.2.5 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
+	github.com/pressly/goose/v3 v3.27.0 // indirect
+	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/theartofdevel/logging v1.0.1 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+)
