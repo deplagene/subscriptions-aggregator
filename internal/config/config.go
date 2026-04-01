@@ -1,13 +1,9 @@
 package config
 
-type Config struct {
-}
+type Config struct{}
 
-type API struct {
-}
+type API struct{}
 
-type Logging struct {
-}
+type Logging struct{}
 
-type DB struct {
-}
+type DB struct{}

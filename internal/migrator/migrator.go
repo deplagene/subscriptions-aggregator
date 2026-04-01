@@ -24,6 +24,10 @@ func NewMigrator(db *sql.DB, migrationPath string) *Migrator {
 func (m *Migrator) Up(ctx context.Context) error {
 	const op = "internal.migrator.Migrator.Up"
 
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("could not set goose dialect %s: %w", op, err)
+	}
+
 	if err := goose.UpContext(ctx, m.db, m.migrationPath); err != nil {
 		return fmt.Errorf("could not up migrations %s: %w", op, err)
 	}
@@ -33,6 +37,10 @@ func (m *Migrator) Up(ctx context.Context) error {
 
 func (m *Migrator) Down(ctx context.Context) error {
 	const op = "internal.migrator.Migrator.Down"
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("could not set goose dialect %s: %w", op, err)
+	}
 
 	if err := goose.DownContext(ctx, m.db, m.migrationPath); err != nil {
 		return fmt.Errorf("could not down migrations %s: %w", op, err)
