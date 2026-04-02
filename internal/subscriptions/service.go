@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/theartofdevel/logging"
 )
 
 var _ ISubscriptionsService = (*subscriptionsService)(nil)
@@ -32,101 +33,129 @@ func NewSubscriptionsService(repo ISubscriptionRepository) *subscriptionsService
 
 func (s *subscriptionsService) Create(ctx context.Context, sub Subscription) (uuid.UUID, error) {
 	const op = "internal.subscriptions.Service.Create"
+	logger := logging.L(ctx)
 
 	normalizeSubscription(&sub)
 
 	if err := sub.Validate(); err != nil {
+		logger.Error(op, "error", err)
 		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	id, err := s.repo.Create(ctx, sub)
 	if err != nil {
+		logger.Error(op, "error", err, "service_name", sub.ServiceName, "user_id", sub.UserID)
 		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	logger.Info(op, "subscription_id", id, "service_name", sub.ServiceName, "user_id", sub.UserID)
 	return id, nil
 }
 
 func (s *subscriptionsService) GetByID(ctx context.Context, id uuid.UUID) (*Subscription, error) {
 	const op = "internal.subscriptions.Service.GetByID"
+	logger := logging.L(ctx)
 
 	if id == uuid.Nil {
-		return nil, fmt.Errorf("%s: subscription_id must not be nil", op)
+		err := fmt.Errorf("%s: subscription_id must not be nil", op)
+		logger.Error(op, "error", err)
+		return nil, err
 	}
 
 	sub, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		logger.Error(op, "error", err, "subscription_id", id)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	logger.Info(op, "subscription_id", id)
 	return sub, nil
 }
 
 func (s *subscriptionsService) List(ctx context.Context, filter ListFilter) ([]Subscription, error) {
 	const op = "internal.subscriptions.Service.List"
+	logger := logging.L(ctx)
 
 	normalizeListFilter(&filter)
 
 	if err := validateListFilter(filter); err != nil {
+		logger.Error(op, "error", err)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	subs, err := s.repo.List(ctx, filter)
 	if err != nil {
+		logger.Error(op, "error", err, "limit", filter.Limit, "offset", filter.Offset, "service_name", filter.ServiceName)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	logger.Info(op, "count", len(subs), "limit", filter.Limit, "offset", filter.Offset, "service_name", filter.ServiceName)
 	return subs, nil
 }
 
 func (s *subscriptionsService) Update(ctx context.Context, sub Subscription) error {
 	const op = "internal.subscriptions.Service.Update"
+	logger := logging.L(ctx)
 
 	if sub.SubscriptionID == uuid.Nil {
-		return fmt.Errorf("%s: subscription_id must not be nil", op)
+		err := fmt.Errorf("%s: subscription_id must not be nil", op)
+		logger.Error(op, "error", err)
+		return err
 	}
 
 	normalizeSubscription(&sub)
 
 	if err := sub.Validate(); err != nil {
+		logger.Error(op, "error", err, "subscription_id", sub.SubscriptionID)
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err := s.repo.Update(ctx, sub); err != nil {
+		logger.Error(op, "error", err, "subscription_id", sub.SubscriptionID)
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	logger.Info(op, "subscription_id", sub.SubscriptionID)
 	return nil
 }
 
 func (s *subscriptionsService) Delete(ctx context.Context, id uuid.UUID) error {
 	const op = "internal.subscriptions.Service.Delete"
+	logger := logging.L(ctx)
 
 	if id == uuid.Nil {
-		return fmt.Errorf("%s: subscription_id must not be nil", op)
+		err := fmt.Errorf("%s: subscription_id must not be nil", op)
+		logger.Error(op, "error", err)
+		return err
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
+		logger.Error(op, "error", err, "subscription_id", id)
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	logger.Info(op, "subscription_id", id)
 	return nil
 }
 
 func (s *subscriptionsService) CalculateTotal(ctx context.Context, filter TotalFilter) (int64, error) {
 	const op = "internal.subscriptions.Service.CalculateTotal"
+	logger := logging.L(ctx)
 
 	normalizeTotalFilter(&filter)
 
 	if err := validateTotalFilter(filter); err != nil {
+		logger.Error(op, "error", err)
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
 	total, err := s.repo.CalculateTotal(ctx, filter)
 	if err != nil {
+		logger.Error(op, "error", err, "service_name", filter.ServiceName)
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
+	logger.Info(op, "total", total, "service_name", filter.ServiceName)
 	return total, nil
 }
 
