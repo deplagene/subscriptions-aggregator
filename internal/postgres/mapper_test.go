@@ -64,7 +64,7 @@ func TestToCreateSubscriptionParams(t *testing.T) {
 
 	got := toCreateSubscriptionParams(sub)
 
-	if got.Price != int32(sub.Price) {
+	if got.Price != sub.Price {
 		t.Errorf("toCreateSubscriptionParams(price) = %d, want %d", got.Price, sub.Price)
 	}
 

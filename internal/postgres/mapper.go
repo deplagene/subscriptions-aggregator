@@ -14,7 +14,7 @@ func mapSubscription(row sqlc.Subscription) *subscriptions.Subscription {
 	subscription := subscriptions.Subscription{
 		SubscriptionID: row.ID,
 		ServiceName:    row.ServiceName,
-		Price:          int64(row.Price),
+		Price:          row.Price,
 		UserID:         row.UserID,
 		StartedAt:      fromPgDate(row.StartedAt),
 	}
@@ -39,7 +39,7 @@ func mapSubscriptions(rows []sqlc.Subscription) []subscriptions.Subscription {
 func toCreateSubscriptionParams(sub subscriptions.Subscription) sqlc.CreateSubscriptionParams {
 	return sqlc.CreateSubscriptionParams{
 		ServiceName: sub.ServiceName,
-		Price:       int32(sub.Price),
+		Price:       sub.Price,
 		UserID:      sub.UserID,
 		StartedAt:   toPgDate(sub.StartedAt),
 		EndedAt:     toPgNullableDate(sub.EndedAt),
@@ -50,7 +50,7 @@ func toUpdateSubscriptionParams(sub subscriptions.Subscription) sqlc.UpdateSubsc
 	return sqlc.UpdateSubscriptionParams{
 		ID:          sub.SubscriptionID,
 		ServiceName: sub.ServiceName,
-		Price:       int32(sub.Price),
+		Price:       sub.Price,
 		UserID:      sub.UserID,
 		StartedAt:   toPgDate(sub.StartedAt),
 		EndedAt:     toPgNullableDate(sub.EndedAt),

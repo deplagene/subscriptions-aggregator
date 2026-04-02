@@ -13,7 +13,7 @@ func TestDBStringHidesPassword(t *testing.T) {
 		Host:          "localhost",
 		Port:          5432,
 		User:          "postgres",
-		Password:      "secret",
+		password:      "secret",
 		DBName:        "subaggregator",
 		SSLMode:       "disable",
 		MigrationPath: "migrations",
@@ -68,8 +68,8 @@ func TestLoadFromEnv(t *testing.T) {
 		t.Error("loadFromEnv().Logging.IsJSON = true, want false")
 	}
 
-	if cfg.DB.Password != "secret" {
-		t.Errorf("loadFromEnv().DB.Password = %q, want %q", cfg.DB.Password, "secret")
+	if cfg.DB.password != "secret" {
+		t.Errorf("loadFromEnv().DB.password = %q, want %q", cfg.DB.password, "secret")
 	}
 
 	if cfg.DB.MigrationPath != "custom-migrations" {

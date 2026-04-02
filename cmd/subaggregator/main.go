@@ -1,3 +1,8 @@
+// @title Subaggregator API
+// @version 1.0
+// @description API для управления пользовательскими подписками и расчета их суммарной стоимости.
+// @BasePath /
+// @schemes http
 package main
 
 import (
@@ -11,6 +16,7 @@ import (
 	"strconv"
 	"syscall"
 
+	_ "github.com/deplagene/subaggregator/docs"
 	"github.com/deplagene/subaggregator/internal/config"
 	"github.com/deplagene/subaggregator/internal/httpapi"
 	httpmiddleware "github.com/deplagene/subaggregator/internal/httpapi/middleware"

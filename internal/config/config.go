@@ -54,7 +54,7 @@ type DB struct {
 	Host          string
 	Port          int
 	User          string
-	Password      string
+	password      string
 	DBName        string
 	SSLMode       string
 	MigrationPath string
@@ -110,7 +110,7 @@ func (d DB) String() string {
 func (d DB) DSN() string {
 	databaseURL := &url.URL{
 		Scheme: "postgres",
-		User:   url.UserPassword(d.User, d.Password),
+		User:   url.UserPassword(d.User, d.password),
 		Host:   net.JoinHostPort(d.Host, strconv.Itoa(d.Port)),
 		Path:   d.DBName,
 	}
@@ -203,14 +203,14 @@ func loadDBFromEnv() (DB, error) {
 		Host:          getEnvString("DB_HOST", defaultDBHost),
 		Port:          port,
 		User:          getEnvString("DB_USER", defaultDBUser),
-		Password:      getEnvString("DB_PASSWORD", defaultDBPassword),
+		password:      getEnvString("DB_PASSWORD", defaultDBPassword),
 		DBName:        getEnvString("DB_NAME", defaultDBName),
 		SSLMode:       getEnvString("DB_SSL_MODE", defaultDBSSLMode),
 		MigrationPath: getEnvString("DB_MIGRATION_PATH", defaultDBMigrationPath),
 	}, nil
 }
 
-func getEnvString(key string, fallback string) string {
+func getEnvString(key, fallback string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists || value == "" {
 		return fallback

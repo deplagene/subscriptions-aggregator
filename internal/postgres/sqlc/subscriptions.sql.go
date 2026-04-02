@@ -73,7 +73,7 @@ RETURNING id
 
 type CreateSubscriptionParams struct {
 	ServiceName string      `db:"service_name"`
-	Price       int32       `db:"price"`
+	Price       int64       `db:"price"`
 	UserID      uuid.UUID   `db:"user_id"`
 	StartedAt   pgtype.Date `db:"started_at"`
 	EndedAt     pgtype.Date `db:"ended_at"`
@@ -193,7 +193,7 @@ WHERE id = $6
 
 type UpdateSubscriptionParams struct {
 	ServiceName string      `db:"service_name"`
-	Price       int32       `db:"price"`
+	Price       int64       `db:"price"`
 	UserID      uuid.UUID   `db:"user_id"`
 	StartedAt   pgtype.Date `db:"started_at"`
 	EndedAt     pgtype.Date `db:"ended_at"`
