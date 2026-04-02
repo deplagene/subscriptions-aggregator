@@ -6,12 +6,14 @@ vars:
   GCI_VERSION: 'v0.13.7'
   GOFUMPT_VERSION: 'v0.9.2'
   SQLC_VERSION: 'v1.30.0'
+  SWAG_VERSION: 'v1.16.4'
 
   BIN_DIR: '{{.ROOT_DIR}}/bin'
   GOLANGCI_LINT: '{{.BIN_DIR}}/golangci-lint'
   GCI: '{{.BIN_DIR}}/gci'
   GOFUMPT: '{{.BIN_DIR}}/gofumpt'
   SQLC: '{{.BIN_DIR}}/sqlc'
+  SWAG: '{{.BIN_DIR}}/swag'
 
 tasks:
   install-formatters:
@@ -84,6 +86,24 @@ tasks:
       - echo "🔍 Проверяем sqlc..."
       - '{{.SQLC}} vet'
       - echo "✅ sqlc vet passed"
+
+  install-swag:
+    desc: 'Устанавливает swag в каталог bin'
+    cmds:
+      - |
+        [ -f {{.SWAG}} ] || {
+          mkdir -p {{.BIN_DIR}}
+          echo "📦 Устанавливаем swag {{.SWAG_VERSION}}..."
+          GOBIN={{.BIN_DIR}} go install github.com/swaggo/swag/cmd/swag@{{.SWAG_VERSION}}
+        }
+    status:
+      - test -x {{.SWAG}}
+
+  swagger-generate:
+    desc: 'Генерирует docs.go, swagger.json и swagger.yaml из аннотаций'
+    deps: [install-swag]
+    cmds:
+      - '{{.SWAG}} init -g cmd/subaggregator/main.go -o docs --parseInternal'
 
   test:
     desc: 'Запускает go test для всего проекта'

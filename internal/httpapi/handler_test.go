@@ -173,6 +173,23 @@ func TestHandlerDeleteSubscription(t *testing.T) {
 	}
 }
 
+func TestHandlerSwaggerUI(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/swagger/index.html", nil)
+	rec := httptest.NewRecorder()
+
+	newTestRouter(NewHandler(&mockSubscriptionsService{})).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /swagger/index.html status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Fatalf("GET /swagger/index.html content-type = %q, want %q", got, "text/html; charset=utf-8")
+	}
+}
+
 type mockSubscriptionsService struct {
 	calculateTotal func(context.Context, subscriptions.TotalFilter) (int64, error)
 	create         func(context.Context, subscriptions.Subscription) (uuid.UUID, error)

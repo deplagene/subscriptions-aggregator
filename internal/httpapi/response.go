@@ -9,8 +9,8 @@ import (
 	"github.com/deplagene/subaggregator/internal/subscriptions"
 )
 
-type errorResponse struct {
-	Error string `json:"error"`
+type ErrorResponse struct {
+	Error string `json:"error" example:"subscription not found"`
 }
 
 func decodeJSON(r *http.Request, dst any) error {
@@ -34,7 +34,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, errorResponse{Error: message})
+	writeJSON(w, status, ErrorResponse{Error: message})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
