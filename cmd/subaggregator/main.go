@@ -3,17 +3,22 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
-	"time"
 
+	"github.com/deplagene/subaggregator/internal/config"
 	"github.com/deplagene/subaggregator/internal/httpapi"
+	httpmiddleware "github.com/deplagene/subaggregator/internal/httpapi/middleware"
 	"github.com/deplagene/subaggregator/internal/migrator"
 	"github.com/deplagene/subaggregator/internal/postgres"
 	"github.com/deplagene/subaggregator/internal/subscriptions"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/theartofdevel/logging"
@@ -21,22 +26,41 @@ import (
 
 func main() {
 	ctx := context.Background()
-	r := chi.NewRouter()
 
-	// кфг файл
+	// кфг
+	cfg, err := config.Load()
+	if err != nil {
+		log.Printf("config.Load: %v", err)
+		return
+	}
+
+	r := chi.NewRouter()
 
 	// логгер
 	logger := logging.NewLogger(
-		logging.WithLevel("info"),
-		logging.WithIsJSON(true),
+		logging.WithLevel(cfg.Logging.Level),
+		logging.WithIsJSON(cfg.Logging.IsJSON),
 	)
 
 	ctx = logging.ContextWithLogger(ctx, logger)
+	logger.Info("config loaded", "config", cfg.String())
 
-	// БД
-	pool, err := pgxpool.New(ctx, "postgres://postgres:postgres@localhost:5432/subaggregator")
+	// middleware
+	r.Use(httpmiddleware.LoggerContext(logger))
+	r.Use(middleware.Timeout(cfg.API.ReadTimeout))
+	r.Use(middleware.Recoverer)
+	r.Use(httpmiddleware.RequestLogger())
+
+	// DB
+	poolConfig, err := pgxpool.ParseConfig(cfg.DB.DSN())
 	if err != nil {
-		logger.Error("main.pgxpool.New", "error", err)
+		logger.Error("main.pgxpool.ParseConfig", "error", err)
+		return
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		logger.Error("main.pgxpool.NewWithConfig", "error", err)
 		return
 	}
 
@@ -47,7 +71,7 @@ func main() {
 		return
 	}
 
-	migrator := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), "")
+	migrator := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), cfg.DB.MigrationPath)
 	if err := migrator.Up(ctx); err != nil {
 		logger.Error("main.migrator.Up", "error", err)
 		return
@@ -60,18 +84,17 @@ func main() {
 
 	handlers.RegisterRoutes(r)
 
-	// API
-
+	// server и graceful shutdown
 	srv := &http.Server{
-		Addr:              ":8080",
+		Addr:              net.JoinHostPort(cfg.API.Host, strconv.Itoa(cfg.API.Port)),
 		Handler:           r,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: cfg.API.ReadHeaderTimeout,
+		ReadTimeout:       cfg.API.ReadTimeout,
+		WriteTimeout:      cfg.API.WriteTimeout,
 	}
 
-	// Graceful Shutdown
-
 	go func() {
-		logger.Info("server started at port", "port", "todo")
+		logger.Info("server started", "addr", srv.Addr)
 		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("could not start server", "error:", err)
@@ -82,7 +105,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, cfg.API.ShutdownTimeout)
 	defer cancel()
 
 	err = srv.Shutdown(ctx)

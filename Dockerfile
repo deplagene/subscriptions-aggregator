@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Собираем статически слинкованный бинарник для Alpine
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./cmd/subaggregator
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o subaggregator ./cmd/subaggregator
 
 # ======= Этап 2: Минимальный образ для запуска приложения =======
 
@@ -24,20 +24,17 @@ FROM alpine:3.21.3
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 
+# Добавляем корневые сертификаты для исходящих сетевых подключений
+RUN apk add --no-cache ca-certificates
+
 # Создаём непривилегированного пользователя и группу с фиксированными UID/GID
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Копируем готовый бинарник из стадии сборки
-COPY --from=builder /app/server .
+COPY --from=builder /app/subaggregator .
 
 # Копируем папку с миграциями из стадии сборки в финальный образ
 COPY --from=builder /app/migrations ./migrations
-
-# Копируем конфиги приложения
-COPY --from=builder /app/config ./config
-
-# Конфиг по умолчанию для контейнерного запуска
-ENV CONFIG_PATH=/app/config/example.yaml
 
 # Меняем владельца файлов на созданного пользователя
 RUN chown -R appuser:appgroup /app
@@ -48,4 +45,4 @@ USER appuser
 EXPOSE 8080
 
 # Устанавливаем команду по умолчанию для запуска контейнера
-CMD ["./server"]
+CMD ["./subaggregator"]
