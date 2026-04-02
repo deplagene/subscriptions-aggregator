@@ -3,7 +3,7 @@ version: '2'
 sql:
   - engine: 'postgresql'
     schema:
-      - 'migrations'
+      - 'internal/postgres/schema.sql'
     queries:
       - 'internal/postgres/query'
     gen:

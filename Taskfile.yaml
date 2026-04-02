@@ -81,4 +81,20 @@ tasks:
     desc: 'Проверяет SQL-запросы и конфиг sqlc'
     deps: [install-sqlc]
     cmds:
+      - echo "🔍 Проверяем sqlc..."
       - '{{.SQLC}} vet'
+      - echo "✅ sqlc vet passed"
+
+  test:
+    desc: 'Запускает go test для всего проекта'
+    cmds:
+      - |
+        mkdir -p .cache/go-build
+        GOCACHE={{.ROOT_DIR}}/.cache/go-build go test ./...
+
+  test-coverage:
+    desc: 'Запускает go test с покрытием и сохраняет профиль'
+    cmds:
+      - |
+        mkdir -p .cache/go-build .cache/coverage
+        GOCACHE={{.ROOT_DIR}}/.cache/go-build go test ./... -coverprofile=.cache/coverage/coverage.out
