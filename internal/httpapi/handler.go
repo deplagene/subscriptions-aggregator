@@ -62,14 +62,14 @@ func (h *Handler) createSubscription(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateSubscriptionRequest
 	if err := decodeJSON(r, &req); err != nil {
 		logger.Error("internal.httpapi.Handler.createSubscription", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
 	sub, err := subscriptionFromCreateRequest(req)
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.createSubscription", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *Handler) getSubscriptionByID(w http.ResponseWriter, r *http.Request) {
 	id, err := parseSubscriptionID(chi.URLParam(r, "id"))
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.getSubscriptionByID", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
@@ -131,7 +131,7 @@ func (h *Handler) listSubscriptions(w http.ResponseWriter, r *http.Request) {
 	filter, err := listFilterFromRequest(r)
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.listSubscriptions", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
@@ -188,21 +188,21 @@ func (h *Handler) updateSubscription(w http.ResponseWriter, r *http.Request) {
 	id, err := parseSubscriptionID(chi.URLParam(r, "id"))
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.updateSubscription", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
 	var req dto.UpdateSubscriptionRequest
 	if err := decodeJSON(r, &req); err != nil {
 		logger.Error("internal.httpapi.Handler.updateSubscription", "error", err, "subscription_id", id)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
 	sub, err := subscriptionFromUpdateRequest(id, req)
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.updateSubscription", "error", err, "subscription_id", id)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
@@ -231,7 +231,7 @@ func (h *Handler) deleteSubscription(w http.ResponseWriter, r *http.Request) {
 	id, err := parseSubscriptionID(chi.URLParam(r, "id"))
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.deleteSubscription", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *Handler) calculateTotal(w http.ResponseWriter, r *http.Request) {
 	filter, err := totalFilterFromRequest(r)
 	if err != nil {
 		logger.Error("internal.httpapi.Handler.calculateTotal", "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, userErrorMessage(err))
 		return
 	}
 

@@ -59,7 +59,11 @@ tasks:
     desc: 'Запускает golangci-lint для всех модулей'
     deps: [install-golangci-lint]
     cmds:
-      - '{{.GOLANGCI_LINT}} run ./... --config=.golangci.yaml'
+      - |
+        mkdir -p .cache/go-build .cache/golangci-lint
+        GOCACHE={{.ROOT_DIR}}/.cache/go-build \
+        GOLANGCI_LINT_CACHE={{.ROOT_DIR}}/.cache/golangci-lint \
+        {{.GOLANGCI_LINT}} run ./cmd/... ./internal/... ./docs/... --config=.golangci.yaml
 
   install-sqlc:
     desc: 'Устанавливает sqlc в каталог bin'

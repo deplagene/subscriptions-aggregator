@@ -26,7 +26,7 @@ func TestRepositoryCreate(t *testing.T) {
 
 	mock := &mockQuerier{
 		createSubscription: func(_ context.Context, arg sqlc.CreateSubscriptionParams) (uuid.UUID, error) {
-			if arg.Price != int32(sub.Price) {
+			if arg.Price != sub.Price {
 				t.Fatalf("CreateSubscription(price) = %d, want %d", arg.Price, sub.Price)
 			}
 

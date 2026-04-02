@@ -15,19 +15,21 @@ import (
 const defaultListLimit int32 = 50
 
 func subscriptionFromCreateRequest(req dto.CreateSubscriptionRequest) (subscriptions.Subscription, error) {
+	const op = "internal.httpapi.subscriptionFromCreateRequest"
+
 	userID, err := parseRequiredUUID(req.UserID, "user_id")
 	if err != nil {
-		return subscriptions.Subscription{}, err
+		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	startDate, err := parseBillingDate(req.StartDate, "start_date")
 	if err != nil {
-		return subscriptions.Subscription{}, err
+		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	endDate, err := parseOptionalBillingDate(req.EndDate, "end_date")
 	if err != nil {
-		return subscriptions.Subscription{}, err
+		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	sub := subscriptions.Subscription{
@@ -39,22 +41,18 @@ func subscriptionFromCreateRequest(req dto.CreateSubscriptionRequest) (subscript
 	}
 
 	if err := sub.Validate(); err != nil {
-		return subscriptions.Subscription{}, err
+		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return sub, nil
 }
 
 func subscriptionFromUpdateRequest(id uuid.UUID, req dto.UpdateSubscriptionRequest) (subscriptions.Subscription, error) {
-	sub, err := subscriptionFromCreateRequest(dto.CreateSubscriptionRequest{
-		ServiceName: req.ServiceName,
-		Price:       req.Price,
-		UserID:      req.UserID,
-		StartDate:   req.StartDate,
-		EndDate:     req.EndDate,
-	})
+	const op = "internal.httpapi.subscriptionFromUpdateRequest"
+
+	sub, err := subscriptionFromCreateRequest(dto.CreateSubscriptionRequest(req))
 	if err != nil {
-		return subscriptions.Subscription{}, err
+		return subscriptions.Subscription{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	sub.SubscriptionID = id
@@ -62,13 +60,15 @@ func subscriptionFromUpdateRequest(id uuid.UUID, req dto.UpdateSubscriptionReque
 }
 
 func listFilterFromRequest(r *http.Request) (subscriptions.ListFilter, error) {
+	const op = "internal.httpapi.listFilterFromRequest"
+
 	values := r.URL.Query()
 
 	limit := defaultListLimit
 	if rawLimit := strings.TrimSpace(values.Get("limit")); rawLimit != "" {
 		parsedLimit, err := strconv.ParseInt(rawLimit, 10, 32)
 		if err != nil {
-			return subscriptions.ListFilter{}, fmt.Errorf("limit must be a valid integer")
+			return subscriptions.ListFilter{}, fmt.Errorf("%s: %w", op, fmt.Errorf("limit must be a valid integer"))
 		}
 
 		limit = int32(parsedLimit)
@@ -78,25 +78,25 @@ func listFilterFromRequest(r *http.Request) (subscriptions.ListFilter, error) {
 	if rawOffset := strings.TrimSpace(values.Get("offset")); rawOffset != "" {
 		parsedOffset, err := strconv.ParseInt(rawOffset, 10, 32)
 		if err != nil {
-			return subscriptions.ListFilter{}, fmt.Errorf("offset must be a valid integer")
+			return subscriptions.ListFilter{}, fmt.Errorf("%s: %w", op, fmt.Errorf("offset must be a valid integer"))
 		}
 
 		offset = int32(parsedOffset)
 	}
 
 	if limit < 0 {
-		return subscriptions.ListFilter{}, fmt.Errorf("limit must be greater than or equal to zero")
+		return subscriptions.ListFilter{}, fmt.Errorf("%s: %w", op, fmt.Errorf("limit must be greater than or equal to zero"))
 	}
 
 	if offset < 0 {
-		return subscriptions.ListFilter{}, fmt.Errorf("offset must be greater than or equal to zero")
+		return subscriptions.ListFilter{}, fmt.Errorf("%s: %w", op, fmt.Errorf("offset must be greater than or equal to zero"))
 	}
 
 	var userID *uuid.UUID
 	if rawUserID := strings.TrimSpace(values.Get("user_id")); rawUserID != "" {
 		parsedUserID, err := parseRequiredUUID(rawUserID, "user_id")
 		if err != nil {
-			return subscriptions.ListFilter{}, err
+			return subscriptions.ListFilter{}, fmt.Errorf("%s: %w", op, err)
 		}
 
 		userID = &parsedUserID
@@ -111,27 +111,29 @@ func listFilterFromRequest(r *http.Request) (subscriptions.ListFilter, error) {
 }
 
 func totalFilterFromRequest(r *http.Request) (subscriptions.TotalFilter, error) {
+	const op = "internal.httpapi.totalFilterFromRequest"
+
 	values := r.URL.Query()
 
 	from, err := parseBillingDate(values.Get("from"), "from")
 	if err != nil {
-		return subscriptions.TotalFilter{}, err
+		return subscriptions.TotalFilter{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	to, err := parseBillingDate(values.Get("to"), "to")
 	if err != nil {
-		return subscriptions.TotalFilter{}, err
+		return subscriptions.TotalFilter{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if to.Before(from) {
-		return subscriptions.TotalFilter{}, fmt.Errorf("to must be after or equal to from")
+		return subscriptions.TotalFilter{}, fmt.Errorf("%s: %w", op, fmt.Errorf("to must be after or equal to from"))
 	}
 
 	var userID *uuid.UUID
 	if rawUserID := strings.TrimSpace(values.Get("user_id")); rawUserID != "" {
 		parsedUserID, err := parseRequiredUUID(rawUserID, "user_id")
 		if err != nil {
-			return subscriptions.TotalFilter{}, err
+			return subscriptions.TotalFilter{}, fmt.Errorf("%s: %w", op, err)
 		}
 
 		userID = &parsedUserID
@@ -163,32 +165,43 @@ func subscriptionResponseFromModel(sub subscriptions.Subscription) dto.Subscript
 }
 
 func parseSubscriptionID(raw string) (uuid.UUID, error) {
-	return parseRequiredUUID(raw, "subscription_id")
-}
+	const op = "internal.httpapi.parseSubscriptionID"
 
-func parseRequiredUUID(raw string, field string) (uuid.UUID, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return uuid.Nil, fmt.Errorf("%s must not be empty", field)
-	}
-
-	id, err := uuid.Parse(trimmed)
+	id, err := parseRequiredUUID(raw, "subscription_id")
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("%s must be a valid uuid", field)
+		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return id, nil
 }
 
-func parseBillingDate(raw string, field string) (subscriptions.BillingDate, error) {
+func parseRequiredUUID(raw, field string) (uuid.UUID, error) {
+	const op = "internal.httpapi.parseRequiredUUID"
+
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return subscriptions.BillingDate{}, fmt.Errorf("%s must not be empty", field)
+		return uuid.Nil, fmt.Errorf("%s: %w", op, fmt.Errorf("%s must not be empty", field))
+	}
+
+	id, err := uuid.Parse(trimmed)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%s: %w", op, fmt.Errorf("%s must be a valid uuid", field))
+	}
+
+	return id, nil
+}
+
+func parseBillingDate(raw, field string) (subscriptions.BillingDate, error) {
+	const op = "internal.httpapi.parseBillingDate"
+
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return subscriptions.BillingDate{}, fmt.Errorf("%s: %w", op, fmt.Errorf("%s must not be empty", field))
 	}
 
 	parsedTime, err := time.Parse("01-2006", trimmed)
 	if err != nil {
-		return subscriptions.BillingDate{}, fmt.Errorf("%s must be in MM-YYYY format", field)
+		return subscriptions.BillingDate{}, fmt.Errorf("%s: %w", op, fmt.Errorf("%s must be in MM-YYYY format", field))
 	}
 
 	return subscriptions.BillingDate{
@@ -198,13 +211,15 @@ func parseBillingDate(raw string, field string) (subscriptions.BillingDate, erro
 }
 
 func parseOptionalBillingDate(raw *string, field string) (*subscriptions.BillingDate, error) {
+	const op = "internal.httpapi.parseOptionalBillingDate"
+
 	if raw == nil {
 		return nil, nil
 	}
 
 	date, err := parseBillingDate(*raw, field)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return &date, nil

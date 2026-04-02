@@ -24,6 +24,17 @@ func decodeJSON(r *http.Request, dst any) error {
 	return nil
 }
 
+func userErrorMessage(err error) string {
+	for {
+		unwrapped := errors.Unwrap(err)
+		if unwrapped == nil {
+			return err.Error()
+		}
+
+		err = unwrapped
+	}
+}
+
 func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, subscriptions.ErrSubscriptionNotFound):

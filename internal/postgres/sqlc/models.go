@@ -12,7 +12,7 @@ import (
 type Subscription struct {
 	ID          uuid.UUID          `db:"id"`
 	ServiceName string             `db:"service_name"`
-	Price       int32              `db:"price"`
+	Price       int64              `db:"price"`
 	UserID      uuid.UUID          `db:"user_id"`
 	StartedAt   pgtype.Date        `db:"started_at"`
 	EndedAt     pgtype.Date        `db:"ended_at"`
